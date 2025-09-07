@@ -509,20 +509,39 @@ master_failover_state:no-failover
 		});
 
 		describe('mget operation', () => {
-			it('should get multiple keys', async () => {
+			it('should get multiple keys with type detection', async () => {
 				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
 				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('mget');
 				thisArg.getNodeParameter.calledWith('keys', 0).mockReturnValue('key1 key2 key3');
-			mockClient.mGet.mockResolvedValue(['value1', 'value2', null]);
+				
+				// Mock type detection for each key
+				mockClient.type.calledWith('key1').mockResolvedValue('string');
+				mockClient.type.calledWith('key2').mockResolvedValue('string');
+				mockClient.type.calledWith('key3').mockResolvedValue('string');
+				
+				// Mock get responses
+				mockClient.get.calledWith('key1').mockResolvedValue('value1');
+				mockClient.get.calledWith('key2').mockResolvedValue('value2');
+				mockClient.get.calledWith('key3').mockResolvedValue(null);
 
 				const output = await node.execute.call(thisArg);
-			expect(mockClient.mGet).toHaveBeenCalledWith(['key1', 'key2', 'key3']);
+				
+				// Verify type detection was called for each key
+				expect(mockClient.type).toHaveBeenCalledWith('key1');
+				expect(mockClient.type).toHaveBeenCalledWith('key2');
+				expect(mockClient.type).toHaveBeenCalledWith('key3');
+				
+				// Verify get was called for string types
+				expect(mockClient.get).toHaveBeenCalledWith('key1');
+				expect(mockClient.get).toHaveBeenCalledWith('key2');
+				expect(mockClient.get).toHaveBeenCalledWith('key3');
+				
 				expect(output[0][0].json).toEqual({
-				key1: 'value1',
-				key2: 'value2',
-				key3: null
+					key1: 'value1',
+					key2: 'value2',
+					key3: null
+				});
 			});
-		});
 		});
 
 		describe('mset operation', () => {

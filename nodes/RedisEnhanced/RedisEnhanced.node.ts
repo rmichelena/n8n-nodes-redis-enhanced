@@ -1278,11 +1278,19 @@ export class RedisEnhanced implements INodeType {
 					} else if (operation === 'mget') {
 						const keys = this.getNodeParameter('keys', itemIndex) as string;
 						const keyArray = keys.split(/\s+/).filter(k => k.length > 0);
-						const values = await client.mGet(keyArray);
+						
+						// Handle mixed data types by getting each key individually with type detection
 						const result: any = {};
-						keyArray.forEach((key, index) => {
-							result[key] = values[index];
-						});
+						for (const key of keyArray) {
+							try {
+								const value = await getValue(client, key, 'automatic');
+								result[key] = value ?? null;
+							} catch (error) {
+								// If individual key fails, set to null but continue with others
+								result[key] = null;
+							}
+						}
+						
 						returnItems.push({ json: result });
 					} else if (operation === 'mset') {
 						const keyValuePairs = this.getNodeParameter('keyValuePairs', itemIndex) as string;
