@@ -147,6 +147,12 @@ export class RedisEnhanced implements INodeType {
 						action: 'Get list length',
 					},
 					{
+						name: 'List Range',
+						value: 'lrange',
+						description: 'Get a range of elements from a list',
+						action: 'Get range of elements from list',
+					},
+					{
 						name: 'Multi Get',
 						value: 'mget',
 						description: 'Get multiple keys at once',
@@ -925,6 +931,47 @@ export class RedisEnhanced implements INodeType {
 			},
 
 			// ----------------------------------
+			//         list range (LRANGE)
+			// ----------------------------------
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['lrange'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Name of the list to get range from',
+			},
+			{
+				displayName: 'Start Index',
+				name: 'start',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: ['lrange'],
+					},
+				},
+				default: 0,
+				description: 'Start index (0-based, negative values allowed)',
+			},
+			{
+				displayName: 'Stop Index',
+				name: 'stop',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: ['lrange'],
+					},
+				},
+				default: -1,
+				description: 'Stop index (inclusive, -1 for last element)',
+			},
+
+			// ----------------------------------
 			//         set operations
 			// ----------------------------------
 			{
@@ -1163,7 +1210,7 @@ export class RedisEnhanced implements INodeType {
 			[
 				'delete', 'get', 'keys', 'set', 'incr', 'publish', 'push', 'pop',
 				'exists', 'mget', 'mset', 'scan', 'ttl', 'persist', 'expireat',
-				'getset', 'append', 'strlen', 'blpop', 'brpop', 'llen',
+				'getset', 'append', 'strlen', 'blpop', 'brpop', 'llen', 'lrange',
 				'sadd', 'srem', 'sismember', 'scard',
 				'zadd', 'zrange', 'zrem', 'zcard',
 				'hlen', 'hkeys', 'hvals', 'hexists', 'eval'
@@ -1379,6 +1426,12 @@ export class RedisEnhanced implements INodeType {
 						const list = this.getNodeParameter('list', itemIndex) as string;
 						const length = await client.lLen(list);
 						returnItems.push({ json: { list, length } });
+					} else if (operation === 'lrange') {
+						const list = this.getNodeParameter('list', itemIndex) as string;
+						const start = this.getNodeParameter('start', itemIndex) as number;
+						const stop = this.getNodeParameter('stop', itemIndex) as number;
+						const elements = await client.lRange(list, start, stop);
+						returnItems.push({ json: { list, start, stop, elements } });
 					} else if (operation === 'sadd') {
 						const set = this.getNodeParameter('set', itemIndex) as string;
 						const members = this.getNodeParameter('members', itemIndex) as string;

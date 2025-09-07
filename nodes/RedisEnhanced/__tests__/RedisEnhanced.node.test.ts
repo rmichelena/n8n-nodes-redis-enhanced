@@ -159,6 +159,7 @@ describe('RedisEnhanced Node', () => {
 			expect(operationValues).toContain('info');
 			expect(operationValues).toContain('keys');
 			expect(operationValues).toContain('llen');
+			expect(operationValues).toContain('lrange');
 			expect(operationValues).toContain('mget');
 			expect(operationValues).toContain('mset');
 			expect(operationValues).toContain('persist');
@@ -179,7 +180,7 @@ describe('RedisEnhanced Node', () => {
 			expect(operationValues).toContain('zrem');
 
 			// Verify total operations count
-			expect(operationValues).toHaveLength(35);
+			expect(operationValues).toHaveLength(36);
 		});
 
 		it('should have Redis credentials configured', () => {
@@ -635,7 +636,66 @@ master_failover_state:no-failover
 		});
 	});
 
+		describe('lrange operation', () => {
+			it('should get range of elements from list', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('lrange');
+				thisArg.getNodeParameter.calledWith('list', 0).mockReturnValue('mylist');
+				thisArg.getNodeParameter.calledWith('start', 0).mockReturnValue(0);
+				thisArg.getNodeParameter.calledWith('stop', 0).mockReturnValue(2);
+				mockClient.lRange.mockResolvedValue(['element1', 'element2', 'element3']);
+
+				const output = await node.execute.call(thisArg);
+				
+				expect(mockClient.lRange).toHaveBeenCalledWith('mylist', 0, 2);
+				expect(output[0][0].json).toEqual({
+					list: 'mylist',
+					start: 0,
+					stop: 2,
+					elements: ['element1', 'element2', 'element3']
+				});
+			});
+
+			it('should handle negative indices', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('lrange');
+				thisArg.getNodeParameter.calledWith('list', 0).mockReturnValue('mylist');
+				thisArg.getNodeParameter.calledWith('start', 0).mockReturnValue(-3);
+				thisArg.getNodeParameter.calledWith('stop', 0).mockReturnValue(-1);
+				mockClient.lRange.mockResolvedValue(['element1', 'element2', 'element3']);
+
+				const output = await node.execute.call(thisArg);
+				
+				expect(mockClient.lRange).toHaveBeenCalledWith('mylist', -3, -1);
+				expect(output[0][0].json).toEqual({
+					list: 'mylist',
+					start: -3,
+					stop: -1,
+					elements: ['element1', 'element2', 'element3']
+				});
+			});
+
+			it('should handle empty list', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('lrange');
+				thisArg.getNodeParameter.calledWith('list', 0).mockReturnValue('emptylist');
+				thisArg.getNodeParameter.calledWith('start', 0).mockReturnValue(0);
+				thisArg.getNodeParameter.calledWith('stop', 0).mockReturnValue(-1);
+				mockClient.lRange.mockResolvedValue([]);
+
+				const output = await node.execute.call(thisArg);
+				
+				expect(mockClient.lRange).toHaveBeenCalledWith('emptylist', 0, -1);
+				expect(output[0][0].json).toEqual({
+					list: 'emptylist',
+					start: 0,
+					stop: -1,
+					elements: []
+				});
+			});
+		});
+
 		// Additional operation tests would continue here...
-		// This provides the comprehensive pattern for testing all 35 operations
+		// This provides the comprehensive pattern for testing all 36 operations
 	});
 });

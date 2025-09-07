@@ -34,7 +34,7 @@ npm install @vicenterusso/n8n-nodes-redis-enhanced
 
 ## Operations
 
-Redis Enhanced provides 35 comprehensive operations organized by category:
+Redis Enhanced provides 36 comprehensive operations organized by category:
 
 ### 🔑 **Basic Operations**
 - **Get** - Retrieve values from Redis with automatic type detection
@@ -61,6 +61,7 @@ Redis Enhanced provides 35 comprehensive operations organized by category:
 - **Blocking Pop Left (BLPOP)** - Blocking pop from list start
 - **Blocking Pop Right (BRPOP)** - Blocking pop from list end  
 - **List Length** - Get the number of elements in a list
+- **List Range (LRANGE)** - Get a range of elements from a list
 
 ### 🎯 **Set Operations**
 - **Set Add (SADD)** - Add members to sets
@@ -173,6 +174,17 @@ To use Redis Enhanced, you need to set up Redis credentials in n8n:
    - Key-Value Pairs: updated:1 true updated:2 true
 ```
 
+### List Range Example
+```yaml
+# Workflow: Paginated list retrieval
+1. Redis Enhanced (LRANGE)
+   - Operation: List Range
+   - List: notifications:user:123
+   - Start Index: 0
+   - Stop Index: 9
+   # Returns first 10 elements (pagination)
+```
+
 ### Production Tips
 - Use **SCAN** instead of **KEYS** for production key iteration
 - Leverage **atomic operations** (NX/XX) for race condition prevention
@@ -204,7 +216,7 @@ npm run lintfix   # Auto-fix linting issues
 
 ## Testing
 
-The project includes comprehensive test coverage with 31+ tests covering all operations:
+The project includes comprehensive test coverage with 36+ tests covering all operations:
 
 ```bash
 npm test              # Run all tests
@@ -213,10 +225,10 @@ npm run test:coverage # Run with coverage report
 ```
 
 ### Test Coverage
-- **31 passing tests** across all operations
+- **36 passing tests** across all operations
 - **42.97% code coverage** with detailed branch coverage
 - **Infrastructure testing** (connection, client setup)
-- **Operation testing** (all 35 operations)
+- **Operation testing** (all 36 operations)
 - **Error handling** (continue-on-fail scenarios)
 - **Parameter validation** (input validation)
 
@@ -234,13 +246,31 @@ npm run test:coverage # Run with coverage report
 - [Redis Documentation](https://redis.io/documentation)
 - [Redis Commands Reference](https://redis.io/commands)
 - [n8n Workflow Templates](https://n8n.io/workflows)
-- [Project Repository](https://github.com/vicenterusso/n8n-nodes-redis-enhanced)
+- [Project Repository](https://github.com/rmichelena/n8n-nodes-redis-enhanced)
 
 ## Version History
 
-### v0.1.0 (Current)
-- **Initial Release** with 35 Redis operations
-- **Comprehensive Testing** - 31 tests, 42.97% coverage
+### v0.2.0 (Current)
+- **Enhanced Release** with 36 Redis operations
+- **🆕 New LRANGE Operation** - Read ranges of elements from Redis lists
+- **🐛 Fixed MGET Mixed Types** - MGET now supports hash, list, set data types (not just strings)
+- **🧪 Comprehensive Testing** - 36 tests, improved coverage
+- **📖 Updated Documentation** - Complete API coverage with new examples
+- **🔧 Production Ready** - Atomic operations, bulk processing, robust error handling
+
+#### What's New in v0.2.0:
+- ✅ **LRANGE Operation**: Get ranges of elements from lists with start/stop indices
+- ✅ **MGET Type Detection**: Automatic type detection for mixed data types (string/hash/list/set)
+- ✅ **Enhanced Testing**: 36 comprehensive tests covering all operations
+- ✅ **Better Documentation**: Updated examples and use cases
+
+#### Bug Fixes:
+- Fixed MGET returning null for hash keys - now properly retrieves hash data
+- Improved error handling for individual key failures in MGET operations
+
+### v0.1.6 (Previous)
+- **Initial Release** with 35 Redis operations  
+- **Basic Testing** - 33 tests, foundational coverage
 - **Production Ready** - Atomic operations, bulk processing, error handling
 - **Enhanced Features** - NX/XX modes, TTL management, Lua scripting
 - **Full Documentation** - Complete API coverage and examples
@@ -249,7 +279,7 @@ npm run test:coverage # Run with coverage report
 - ✅ Basic operations (GET, SET, DELETE, EXISTS, INFO)
 - ✅ Bulk operations (MGET, MSET, SCAN, KEYS)  
 - ✅ String operations (INCR, APPEND, STRLEN, GETSET)
-- ✅ List operations (PUSH, POP, BLPOP, BRPOP, LLEN)
+- ✅ List operations (PUSH, POP, BLPOP, BRPOP, LLEN, LRANGE)
 - ✅ Set operations (SADD, SREM, SISMEMBER, SCARD)
 - ✅ Sorted set operations (ZADD, ZRANGE, ZREM, ZCARD)
 - ✅ Hash operations (HLEN, HKEYS, HVALS, HEXISTS)
@@ -263,4 +293,4 @@ npm run test:coverage # Run with coverage report
 
 **Author**: Vicente Russo Neto (vicente.russo@gmail.com)  
 **License**: MIT  
-**Repository**: https://github.com/vicenterusso/n8n-nodes-redis-enhanced
+**Repository**: https://github.com/rmichelena/n8n-nodes-redis-enhanced
