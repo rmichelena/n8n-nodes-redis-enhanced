@@ -1,5 +1,5 @@
 {
-  "name": "@vicenterusso/n8n-nodes-redis-enhanced",
+  "name": "@rmichelena/n8n-nodes-redis-enhanced",
   "version": "0.2.0",
   "description": "Enhanced Redis node for n8n with comprehensive operations including pub/sub, lists, sets, hashes, and TTL support",
   "keywords": [

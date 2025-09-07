@@ -23,13 +23,13 @@ Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes
 ### Quick Install
 1. Open your n8n instance
 2. Go to **Settings** → **Community Nodes**
-3. Enter the package name: `@vicenterusso/n8n-nodes-redis-enhanced`
+3. Enter the package name: `@rmichelena/n8n-nodes-redis-enhanced`
 4. Click **Install**
 5. Restart n8n
 
 ### Manual Installation
 ```bash
-npm install @vicenterusso/n8n-nodes-redis-enhanced
+npm install @rmichelena/n8n-nodes-redis-enhanced
 ```
 
 ## Operations
