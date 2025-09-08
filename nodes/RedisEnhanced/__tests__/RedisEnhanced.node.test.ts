@@ -294,15 +294,60 @@ master_failover_state:no-failover
 		});
 
 		describe('delete operation', () => {
-			it('should delete', async () => {
+			it('should delete single key', async () => {
 				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
 				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('delete');
 				thisArg.getNodeParameter.calledWith('key', 0).mockReturnValue('key1');
-				mockClient.del.calledWith('key1').mockResolvedValue(1);
+				mockClient.del.mockResolvedValue(1);
 
 				const output = await node.execute.call(thisArg);
-				expect(mockClient.del).toHaveBeenCalledWith('key1');
-				expect(output[0][0].json).toEqual({ x: 1 });
+				expect(mockClient.del).toHaveBeenCalledWith(['key1']);
+				expect(output[0][0].json).toEqual({ 
+					deletedKeys: ['key1'], 
+					deletedCount: 1 
+				});
+			});
+
+			it('should delete multiple keys', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('delete');
+				thisArg.getNodeParameter.calledWith('key', 0).mockReturnValue('key1 key2 key3');
+				mockClient.del.mockResolvedValue(3);
+
+				const output = await node.execute.call(thisArg);
+				expect(mockClient.del).toHaveBeenCalledWith(['key1', 'key2', 'key3']);
+				expect(output[0][0].json).toEqual({ 
+					deletedKeys: ['key1', 'key2', 'key3'], 
+					deletedCount: 3 
+				});
+			});
+
+			it('should handle keys with extra spaces', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('delete');
+				thisArg.getNodeParameter.calledWith('key', 0).mockReturnValue('  key1   key2  key3  ');
+				mockClient.del.mockResolvedValue(2);
+
+				const output = await node.execute.call(thisArg);
+				expect(mockClient.del).toHaveBeenCalledWith(['key1', 'key2', 'key3']);
+				expect(output[0][0].json).toEqual({ 
+					deletedKeys: ['key1', 'key2', 'key3'], 
+					deletedCount: 2 
+				});
+			});
+
+			it('should handle partial deletion (some keys dont exist)', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('delete');
+				thisArg.getNodeParameter.calledWith('key', 0).mockReturnValue('existing_key nonexistent_key');
+				mockClient.del.mockResolvedValue(1);
+
+				const output = await node.execute.call(thisArg);
+				expect(mockClient.del).toHaveBeenCalledWith(['existing_key', 'nonexistent_key']);
+				expect(output[0][0].json).toEqual({ 
+					deletedKeys: ['existing_key', 'nonexistent_key'], 
+					deletedCount: 1 
+				});
 			});
 
 			it('should continue and return an error when continue on fail is enabled and an error is thrown', async () => {

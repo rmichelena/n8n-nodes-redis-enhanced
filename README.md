@@ -39,7 +39,7 @@ Redis Enhanced provides 36 comprehensive operations organized by category:
 ### 🔑 **Basic Operations**
 - **Get** - Retrieve values from Redis with automatic type detection
 - **Set** - Store values with atomic lock support (NX/XX modes) and TTL
-- **Delete** - Remove keys from Redis
+- **Delete** - Remove single or multiple keys from Redis (supports bulk deletion)
 - **Exists** - Check if one or more keys exist
 - **Info** - Get Redis server information and statistics
 
@@ -185,6 +185,16 @@ To use Redis Enhanced, you need to set up Redis credentials in n8n:
    # Returns first 10 elements (pagination)
 ```
 
+### Bulk Deletion Example
+```yaml
+# Workflow: Clean up session keys
+1. Redis Enhanced (DELETE)
+   - Operation: Delete
+   - Key(s): session:123 session:456 temp:abc cache:xyz
+   # Deletes multiple keys in a single operation
+   # Returns: { deletedKeys: ["session:123", ...], deletedCount: 3 }
+```
+
 ### Production Tips
 - Use **SCAN** instead of **KEYS** for production key iteration
 - Leverage **atomic operations** (NX/XX) for race condition prevention
@@ -253,8 +263,9 @@ npm run test:coverage # Run with coverage report
 ### v0.2.0 (Current)
 - **Enhanced Release** with 36 Redis operations
 - **🆕 New LRANGE Operation** - Read ranges of elements from Redis lists
+- **🚀 Enhanced DELETE Operation** - Multiple key deletion support with detailed response
 - **🐛 Fixed MGET Mixed Types** - MGET now supports hash, list, set data types (not just strings)
-- **🧪 Comprehensive Testing** - 36 tests, improved coverage
+- **🧪 Comprehensive Testing** - 39 tests, improved coverage
 - **📖 Updated Documentation** - Complete API coverage with new examples
 - **🔧 Production Ready** - Atomic operations, bulk processing, robust error handling
 

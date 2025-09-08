@@ -268,7 +268,7 @@ export class RedisEnhanced implements INodeType {
 			//         delete
 			// ----------------------------------
 			{
-				displayName: 'Key',
+				displayName: 'Key(s)',
 				name: 'key',
 				type: 'string',
 				displayOptions: {
@@ -278,7 +278,7 @@ export class RedisEnhanced implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Name of the key to delete from Redis',
+				description: 'Name of the key(s) to delete from Redis. For multiple keys, separate with spaces (e.g., "key1 key2 key3")',
 			},
 
 			// ----------------------------------
@@ -1224,10 +1224,16 @@ export class RedisEnhanced implements INodeType {
 					item = { json: {}, pairedItem: { item: itemIndex } };
 
 					if (operation === 'delete') {
-						const keyDelete = this.getNodeParameter('key', itemIndex) as string;
+						const keyInput = this.getNodeParameter('key', itemIndex) as string;
+						// Split by spaces to support multiple keys, but maintain backward compatibility
+						const keysToDelete = keyInput.trim().split(/\s+/);
 
-						await client.del(keyDelete);
-						returnItems.push(items[itemIndex]);
+						const deletedCount = await client.del(keysToDelete);
+						item.json = { 
+							deletedKeys: keysToDelete,
+							deletedCount: deletedCount 
+						};
+						returnItems.push(item);
 					} else if (operation === 'get') {
 						const propertyName = this.getNodeParameter('propertyName', itemIndex) as string;
 						const keyGet = this.getNodeParameter('key', itemIndex) as string;
