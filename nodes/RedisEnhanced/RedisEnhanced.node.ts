@@ -162,19 +162,19 @@ export class RedisEnhanced implements INodeType {
 						name: 'Multi Mix Get',
 						value: 'mxget',
 						description: 'Get multiple keys with automatic type detection (string, hash, list, set)',
-						action: 'Get multiple mixed-type keys from redis',
+						action: 'Get multiple mixed type keys from redis',
+					},
+					{
+						name: 'Multi Mix Set',
+						value: 'mxset',
+						description: 'Set multiple keys with automatic type detection (string, hash, list, set)',
+						action: 'Set multiple mixed type keys in redis',
 					},
 					{
 						name: 'Multi Set',
 						value: 'mset',
 						description: 'Set multiple string keys at once (Redis native)',
 						action: 'Set multiple string keys at once in redis',
-					},
-					{
-						name: 'Multi Mix Set',
-						value: 'mxset',
-						description: 'Set multiple keys with automatic type detection (string, hash, list, set)',
-						action: 'Set multiple mixed-type keys in redis',
 					},
 					{
 						name: 'Persist',
