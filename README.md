@@ -44,8 +44,18 @@ Redis Enhanced provides 41 comprehensive operations organized by category:
 - **Info** - Get Redis server information and statistics
 
 ### 📦 **Bulk Operations**
-- **Multi Get (MGET)** - Retrieve multiple keys in a single operation
-- **Multi Set (MSET)** - Set multiple key-value pairs atomically
+
+#### **Native Redis Operations**
+- **Multi Get (MGET)** - Retrieve multiple string keys in a single atomic operation (Redis native)
+- **Multi Set (MSET)** - Set multiple string key-value pairs atomically (Redis native)
+
+#### **Enhanced Mixed-Type Operations**
+- **Multi Mix Get (MXGET)** - Retrieve multiple keys with automatic type detection (string, hash, list, set)
+  - *Note: Custom implementation that iterates over keys using individual GET operations*
+- **Multi Mix Set (MXSET)** - Set multiple keys with automatic type detection and JSON parsing
+  - *Note: Custom implementation that iterates over keys using individual SET operations*
+
+#### **Key Discovery Operations**  
 - **Scan** - Production-safe key iteration with pattern matching
 - **Keys** - Find keys matching patterns (with optional value retrieval)
 
@@ -167,14 +177,35 @@ To use Redis Enhanced, you need to set up Redis credentials in n8n:
 ```
 
 ### Bulk Operations Example
+
+#### Native Redis Bulk Operations (Atomic)
 ```yaml
-# Workflow: Bulk data processing
+# Workflow: Bulk string data processing (Redis native - atomic)
 1. Redis Enhanced (MGET)
    - Operation: Multi Get
-   - Keys: user:1 user:2 user:3 user:4
-2. Redis Enhanced (MSET)
+   - Keys: counter:1 counter:2 counter:3
+   # Native Redis MGET - atomic operation for string values only
+
+2. Redis Enhanced (MSET) 
    - Operation: Multi Set
    - Key-Value Pairs: updated:1 true updated:2 true
+   # Native Redis MSET - atomic operation for string values only
+```
+
+#### Mixed-Type Bulk Operations (Enhanced)
+```yaml
+# Workflow: Mixed data type processing (Custom implementation)
+1. Redis Enhanced (MXGET)
+   - Operation: Multi Mix Get
+   - Keys: user:profile:123 notifications:list:123 stats:hash:123
+   # Custom implementation - iterates over keys with type detection
+   # Supports string, hash, list, and set data types
+
+2. Redis Enhanced (MXSET)
+   - Operation: Multi Mix Set  
+   - Key-Value Pairs: user:name "John" config:data {"theme":"dark"} tags:list ["redis","n8n"]
+   # Custom implementation - iterates over keys with JSON parsing
+   # Automatically detects and sets appropriate Redis data types
 ```
 
 ### List Range Example
@@ -224,11 +255,19 @@ To use Redis Enhanced, you need to set up Redis credentials in n8n:
 ```
 
 ### Production Tips
+
+#### **Bulk Operations Strategy**
+- **Use MGET/MSET for strings**: Native Redis operations are atomic and faster for string-only data
+- **Use MXGET/MXSET for mixed types**: When you need automatic type detection for hashes, lists, sets
+- **Performance consideration**: MXGET/MXSET iterate over keys (non-atomic) vs MGET/MSET (atomic)
+- **Choose based on data type**: Strings → native operations, Mixed types → enhanced operations
+
+#### **General Best Practices**
 - Use **SCAN** instead of **KEYS** for production key iteration
 - Leverage **atomic operations** (NX/XX) for race condition prevention
 - Set appropriate **TTL values** for cache invalidation
-- Use **bulk operations** (MGET/MSET) for better performance
 - Monitor operations with **INFO** for production insights
+- Consider **network round trips**: MGET/MSET = 1 trip, MXGET/MXSET = N trips (where N = number of keys)
 
 ## Development
 
@@ -288,7 +327,20 @@ npm run test:coverage # Run with coverage report
 
 ## Version History
 
-### v0.2.3 (Current)
+### v0.2.4 (Current)
+- **Documentation Enhancement** - Clear distinction between native and custom operations
+- **🆕 Enhanced MXGET/MXSET Documentation** - Detailed explanation of custom mixed-type operations
+- **📖 Updated Examples** - Separate examples for native vs custom bulk operations  
+- **🎯 Production Guidelines** - Performance considerations and best practices for bulk operations
+- **🔧 Technical Clarity** - Clear explanation of atomic vs non-atomic operations
+
+#### What's New in v0.2.4:
+- ✅ **Clear Operation Types**: Native Redis operations (MGET/MSET) vs Custom implementations (MXGET/MXSET)
+- ✅ **Performance Guidance**: When to use atomic operations vs type-detection operations
+- ✅ **Enhanced Examples**: Practical usage examples for both operation types
+- ✅ **Technical Documentation**: Network round-trip considerations and performance impact
+
+### v0.2.3
 - **Hash Operations Release** with 41 Redis operations
 - **🆕 New Hash Operations** - HSET, HGET, HMGET for granular hash field management
 - **🧪 Enhanced Testing** - 48 tests with comprehensive hash operation coverage
