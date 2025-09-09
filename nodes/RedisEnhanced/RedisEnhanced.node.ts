@@ -105,6 +105,12 @@ export class RedisEnhanced implements INodeType {
 						action: 'Check if hash field exists',
 					},
 					{
+						name: 'Hash Get',
+						value: 'hget',
+						description: 'Get the value of a hash field',
+						action: 'Get hash field value',
+					},
+					{
 						name: 'Hash Keys',
 						value: 'hkeys',
 						description: 'Get all field names in a hash',
@@ -115,6 +121,12 @@ export class RedisEnhanced implements INodeType {
 						value: 'hlen',
 						description: 'Get the number of fields in a hash',
 						action: 'Get hash length',
+					},
+					{
+						name: 'Hash Set',
+						value: 'hset',
+						description: 'Set the value of a hash field',
+						action: 'Set hash field value',
 					},
 					{
 						name: 'Hash Values',
@@ -157,6 +169,12 @@ export class RedisEnhanced implements INodeType {
 						value: 'mget',
 						description: 'Get multiple string keys at once (Redis native)',
 						action: 'Get multiple string keys at once from redis',
+					},
+					{
+						name: 'Multi Hash Get',
+						value: 'hmget',
+						description: 'Get multiple hash field values at once',
+						action: 'Get multiple hash field values',
 					},
 					{
 						name: 'Multi Mix Get',
@@ -1153,7 +1171,7 @@ export class RedisEnhanced implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['hlen', 'hkeys', 'hvals', 'hexists'],
+						operation: ['hlen', 'hkeys', 'hvals', 'hexists', 'hget', 'hset', 'hmget'],
 					},
 				},
 				default: '',
@@ -1166,12 +1184,64 @@ export class RedisEnhanced implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: ['hexists'],
+						operation: ['hexists', 'hget', 'hset'],
 					},
 				},
 				default: '',
 				required: true,
-				description: 'Field name to check',
+				description: 'Field name in the hash',
+			},
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['hmget'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Space-separated field names to retrieve from the hash',
+				placeholder: 'field1 field2 field3',
+			},
+			{
+				displayName: 'Value',
+				name: 'value',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['hset'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Value to set for the hash field',
+			},
+			{
+				displayName: 'Value Is JSON',
+				name: 'valueIsJSON',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: ['hset'],
+					},
+				},
+				default: false,
+				description: 'Whether to parse the value as JSON',
+			},
+			{
+				displayName: 'Property Name',
+				name: 'propertyName',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['hget', 'hmget'],
+					},
+				},
+				default: 'data',
+				required: true,
+				description: 'Name of the property to write the retrieved data to',
 			},
 
 			// ----------------------------------
@@ -1261,7 +1331,7 @@ export class RedisEnhanced implements INodeType {
 				'getset', 'append', 'strlen', 'blpop', 'brpop', 'llen', 'lrange',
 				'sadd', 'srem', 'sismember', 'scard',
 				'zadd', 'zrange', 'zrem', 'zcard',
-				'hlen', 'hkeys', 'hvals', 'hexists', 'eval'
+				'hlen', 'hkeys', 'hvals', 'hexists', 'hget', 'hset', 'hmget', 'eval'
 			].includes(operation)
 		) {
 			const items = this.getInputData();
@@ -1655,6 +1725,54 @@ export class RedisEnhanced implements INodeType {
 						const field = this.getNodeParameter('field', itemIndex) as string;
 						const exists = await client.hExists(hash, field);
 						returnItems.push({ json: { hash, field, exists } });
+					} else if (operation === 'hget') {
+						const hash = this.getNodeParameter('hash', itemIndex) as string;
+						const field = this.getNodeParameter('field', itemIndex) as string;
+						const propertyName = this.getNodeParameter('propertyName', itemIndex) as string;
+						const value = await client.hGet(hash, field);
+						let outputValue;
+						try {
+							outputValue = value && JSON.parse(value);
+						} catch {
+							outputValue = value;
+						}
+						item = { ...items[itemIndex] };
+						item.json[propertyName] = outputValue;
+						returnItems.push(item);
+					} else if (operation === 'hset') {
+						const hash = this.getNodeParameter('hash', itemIndex) as string;
+						const field = this.getNodeParameter('field', itemIndex) as string;
+						const value = this.getNodeParameter('value', itemIndex) as string;
+						const valueIsJSON = this.getNodeParameter('valueIsJSON', itemIndex, false) as boolean;
+						let processedValue = value;
+						if (valueIsJSON) {
+							try {
+								processedValue = JSON.parse(value);
+							} catch (error) {
+								throw new NodeOperationError(this.getNode(), `Invalid JSON in value: ${error.message}`);
+							}
+						}
+						await client.hSet(hash, field, processedValue);
+						returnItems.push({ json: { hash, field, value: processedValue } });
+					} else if (operation === 'hmget') {
+						const hash = this.getNodeParameter('hash', itemIndex) as string;
+						const fields = this.getNodeParameter('fields', itemIndex) as string;
+						const fieldArray = fields.split(/\s+/).filter(f => f.length > 0);
+						const propertyName = this.getNodeParameter('propertyName', itemIndex) as string;
+						const values = await client.hmGet(hash, fieldArray);
+						const result: any = {};
+						fieldArray.forEach((f, idx) => {
+							let outputValue;
+							try {
+								outputValue = values[idx] && JSON.parse(values[idx]);
+							} catch {
+								outputValue = values[idx];
+							}
+							result[f] = outputValue;
+						});
+						item = { ...items[itemIndex] };
+						item.json[propertyName] = result;
+						returnItems.push(item);
 					} else if (operation === 'eval') {
 						const script = this.getNodeParameter('script', itemIndex) as string;
 						const keys = this.getNodeParameter('keys', itemIndex, '') as string;

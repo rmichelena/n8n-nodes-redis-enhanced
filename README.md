@@ -2,7 +2,7 @@
 
 This is an n8n community node that provides comprehensive Redis integration with enhanced operations for your n8n workflows.
 
-Redis Enhanced extends the basic Redis functionality with 35+ operations including atomic operations, bulk operations, advanced data structures (sets, sorted sets, hashes), TTL management, Lua scripting, and pub/sub capabilities.
+Redis Enhanced extends the basic Redis functionality with 41+ operations including atomic operations, bulk operations, advanced data structures (sets, sorted sets, hashes), TTL management, Lua scripting, and pub/sub capabilities.
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/reference/license/) workflow automation platform.
 
@@ -34,7 +34,7 @@ npm install @rmichelena/n8n-nodes-redis-enhanced
 
 ## Operations
 
-Redis Enhanced provides 36 comprehensive operations organized by category:
+Redis Enhanced provides 41 comprehensive operations organized by category:
 
 ### 🔑 **Basic Operations**
 - **Get** - Retrieve values from Redis with automatic type detection
@@ -76,6 +76,9 @@ Redis Enhanced provides 36 comprehensive operations organized by category:
 - **Sorted Set Cardinality (ZCARD)** - Get sorted set size
 
 ### 🗂️ **Hash Operations**
+- **Hash Set (HSET)** - Set the value of a hash field
+- **Hash Get (HGET)** - Get the value of a hash field
+- **Multi Hash Get (HMGET)** - Get multiple hash field values at once
 - **Hash Length (HLEN)** - Get number of hash fields
 - **Hash Keys (HKEYS)** - Get all field names
 - **Hash Values (HVALS)** - Get all hash values
@@ -195,6 +198,31 @@ To use Redis Enhanced, you need to set up Redis credentials in n8n:
    # Returns: { deletedKeys: ["session:123", ...], deletedCount: 3 }
 ```
 
+### Hash Operations Example
+```yaml
+# Workflow: User profile management with hashes
+1. Redis Enhanced (HSET)
+   - Operation: Hash Set
+   - Hash: user:profile:123
+   - Field: email
+   - Value: user@example.com
+   # Sets a single field in a hash
+
+2. Redis Enhanced (HGET)
+   - Operation: Hash Get
+   - Hash: user:profile:123
+   - Field: email
+   - Property Name: userEmail
+   # Gets a single field value
+
+3. Redis Enhanced (HMGET)
+   - Operation: Multi Hash Get
+   - Hash: user:profile:123
+   - Fields: email name age city
+   - Property Name: profileData
+   # Returns: { email: "user@example.com", name: "John", age: "30", city: "NYC" }
+```
+
 ### Production Tips
 - Use **SCAN** instead of **KEYS** for production key iteration
 - Leverage **atomic operations** (NX/XX) for race condition prevention
@@ -226,7 +254,7 @@ npm run lintfix   # Auto-fix linting issues
 
 ## Testing
 
-The project includes comprehensive test coverage with 36+ tests covering all operations:
+The project includes comprehensive test coverage with 48+ tests covering all operations:
 
 ```bash
 npm test              # Run all tests
@@ -235,10 +263,10 @@ npm run test:coverage # Run with coverage report
 ```
 
 ### Test Coverage
-- **36 passing tests** across all operations
+- **48 passing tests** across all operations
 - **42.97% code coverage** with detailed branch coverage
 - **Infrastructure testing** (connection, client setup)
-- **Operation testing** (all 36 operations)
+- **Operation testing** (all 41 operations)
 - **Error handling** (continue-on-fail scenarios)
 - **Parameter validation** (input validation)
 
@@ -260,7 +288,21 @@ npm run test:coverage # Run with coverage report
 
 ## Version History
 
-### v0.2.0 (Current)
+### v0.2.3 (Current)
+- **Hash Operations Release** with 41 Redis operations
+- **🆕 New Hash Operations** - HSET, HGET, HMGET for granular hash field management
+- **🧪 Enhanced Testing** - 48 tests with comprehensive hash operation coverage
+- **📖 Updated Documentation** - Complete hash operations examples and usage guides
+- **🔧 Production Ready** - Atomic hash field operations with JSON support
+
+#### What's New in v0.2.3:
+- ✅ **HSET Operation**: Set individual hash field values with optional JSON parsing
+- ✅ **HGET Operation**: Get individual hash field values with automatic JSON detection
+- ✅ **HMGET Operation**: Get multiple hash field values in a single operation
+- ✅ **Enhanced Testing**: 48 comprehensive tests covering all operations including new hash ops
+- ✅ **Better Documentation**: Updated examples and use cases for hash operations
+
+### v0.2.0
 - **Enhanced Release** with 36 Redis operations
 - **🆕 New LRANGE Operation** - Read ranges of elements from Redis lists
 - **🚀 Enhanced DELETE Operation** - Multiple key deletion support with detailed response
@@ -293,7 +335,7 @@ npm run test:coverage # Run with coverage report
 - ✅ List operations (PUSH, POP, BLPOP, BRPOP, LLEN, LRANGE)
 - ✅ Set operations (SADD, SREM, SISMEMBER, SCARD)
 - ✅ Sorted set operations (ZADD, ZRANGE, ZREM, ZCARD)
-- ✅ Hash operations (HLEN, HKEYS, HVALS, HEXISTS)
+- ✅ Hash operations (HSET, HGET, HMGET, HLEN, HKEYS, HVALS, HEXISTS)
 - ✅ TTL operations (TTL, PERSIST, EXPIREAT)
 - ✅ Advanced operations (EVAL, PUBLISH)
 - ✅ Atomic lock support (NX/XX modes)

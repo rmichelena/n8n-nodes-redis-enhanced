@@ -152,9 +152,12 @@ describe('RedisEnhanced Node', () => {
 			expect(operationValues).toContain('get');
 			expect(operationValues).toContain('getset');
 			expect(operationValues).toContain('hexists');
+			expect(operationValues).toContain('hget');
 			expect(operationValues).toContain('hkeys');
 			expect(operationValues).toContain('hlen');
+			expect(operationValues).toContain('hset');
 			expect(operationValues).toContain('hvals');
+			expect(operationValues).toContain('hmget');
 			expect(operationValues).toContain('incr');
 			expect(operationValues).toContain('info');
 			expect(operationValues).toContain('keys');
@@ -180,7 +183,7 @@ describe('RedisEnhanced Node', () => {
 			expect(operationValues).toContain('zrem');
 
 			// Verify total operations count
-			expect(operationValues).toHaveLength(38);
+			expect(operationValues).toHaveLength(41);
 		});
 
 		it('should have Redis credentials configured', () => {
@@ -796,7 +799,127 @@ master_failover_state:no-failover
 			});
 		});
 
+		describe('hset operation', () => {
+			it('should set hash field with string value', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('hset');
+				thisArg.getNodeParameter.calledWith('hash', 0).mockReturnValue('myhash');
+				thisArg.getNodeParameter.calledWith('field', 0).mockReturnValue('myfield');
+				thisArg.getNodeParameter.calledWith('value', 0).mockReturnValue('myvalue');
+				thisArg.getNodeParameter.calledWith('valueIsJSON', 0).mockReturnValue(false);
+				mockClient.hSet.mockResolvedValue(1);
+
+				const output = await node.execute.call(thisArg);
+				
+				expect(mockClient.hSet).toHaveBeenCalledWith('myhash', 'myfield', 'myvalue');
+				expect(output[0][0].json).toEqual({
+					hash: 'myhash',
+					field: 'myfield',
+					value: 'myvalue'
+				});
+			});
+
+			it('should set hash field with JSON value', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('hset');
+				thisArg.getNodeParameter.calledWith('hash', 0).mockReturnValue('myhash');
+				thisArg.getNodeParameter.calledWith('field', 0).mockReturnValue('myfield');
+				thisArg.getNodeParameter.calledWith('value', 0).mockReturnValue('{"key":"value"}');
+				thisArg.getNodeParameter.calledWith('valueIsJSON', 0).mockReturnValue(true);
+				mockClient.hSet.mockResolvedValue(1);
+
+				const output = await node.execute.call(thisArg);
+				
+				expect(mockClient.hSet).toHaveBeenCalledWith('myhash', 'myfield', {"key":"value"});
+				expect(output[0][0].json).toEqual({
+					hash: 'myhash',
+					field: 'myfield',
+					value: {"key":"value"}
+				});
+			});
+		});
+
+		describe('hget operation', () => {
+			it('should get hash field value', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('hget');
+				thisArg.getNodeParameter.calledWith('hash', 0).mockReturnValue('myhash');
+				thisArg.getNodeParameter.calledWith('field', 0).mockReturnValue('myfield');
+				thisArg.getNodeParameter.calledWith('propertyName', 0).mockReturnValue('result');
+				mockClient.hGet.mockResolvedValue('myvalue');
+
+				const output = await node.execute.call(thisArg);
+				
+				expect(mockClient.hGet).toHaveBeenCalledWith('myhash', 'myfield');
+				expect(output[0][0].json).toEqual({
+					x: 1,
+					result: 'myvalue'
+				});
+			});
+
+			it('should handle non-existent field', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('hget');
+				thisArg.getNodeParameter.calledWith('hash', 0).mockReturnValue('myhash');
+				thisArg.getNodeParameter.calledWith('field', 0).mockReturnValue('nonexistent');
+				thisArg.getNodeParameter.calledWith('propertyName', 0).mockReturnValue('result');
+				mockClient.hGet.mockResolvedValue(null);
+
+				const output = await node.execute.call(thisArg);
+				
+				expect(mockClient.hGet).toHaveBeenCalledWith('myhash', 'nonexistent');
+				expect(output[0][0].json).toEqual({
+					x: 1,
+					result: null
+				});
+			});
+		});
+
+		describe('hmget operation', () => {
+			it('should get multiple hash field values', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('hmget');
+				thisArg.getNodeParameter.calledWith('hash', 0).mockReturnValue('myhash');
+				thisArg.getNodeParameter.calledWith('fields', 0).mockReturnValue('field1 field2 field3');
+				thisArg.getNodeParameter.calledWith('propertyName', 0).mockReturnValue('result');
+				mockClient.hmGet.mockResolvedValue(['value1', 'value2', 'value3']);
+
+				const output = await node.execute.call(thisArg);
+				
+				expect(mockClient.hmGet).toHaveBeenCalledWith('myhash', ['field1', 'field2', 'field3']);
+				expect(output[0][0].json).toEqual({
+					x: 1,
+					result: {
+						field1: 'value1',
+						field2: 'value2',
+						field3: 'value3'
+					}
+				});
+			});
+
+			it('should handle mixed existing/non-existing fields', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('hmget');
+				thisArg.getNodeParameter.calledWith('hash', 0).mockReturnValue('myhash');
+				thisArg.getNodeParameter.calledWith('fields', 0).mockReturnValue('field1 nonexistent field3');
+				thisArg.getNodeParameter.calledWith('propertyName', 0).mockReturnValue('result');
+				mockClient.hmGet.mockResolvedValue(['value1', null, 'value3']);
+
+				const output = await node.execute.call(thisArg);
+				
+				expect(mockClient.hmGet).toHaveBeenCalledWith('myhash', ['field1', 'nonexistent', 'field3']);
+				expect(output[0][0].json).toEqual({
+					x: 1,
+					result: {
+						field1: 'value1',
+						nonexistent: null,
+						field3: 'value3'
+					}
+				});
+			});
+		});
+
 		// Additional operation tests would continue here...
-		// This provides the comprehensive pattern for testing all 38 operations
+		// This provides the comprehensive pattern for testing all 41 operations
 	});
 });
