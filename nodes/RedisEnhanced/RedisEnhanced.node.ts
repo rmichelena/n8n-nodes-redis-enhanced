@@ -155,14 +155,26 @@ export class RedisEnhanced implements INodeType {
 					{
 						name: 'Multi Get',
 						value: 'mget',
-						description: 'Get multiple keys at once',
-						action: 'Get multiple keys at once from redis',
+						description: 'Get multiple string keys at once (Redis native)',
+						action: 'Get multiple string keys at once from redis',
+					},
+					{
+						name: 'Multi Mix Get',
+						value: 'mxget',
+						description: 'Get multiple keys with automatic type detection (string, hash, list, set)',
+						action: 'Get multiple mixed-type keys from redis',
 					},
 					{
 						name: 'Multi Set',
 						value: 'mset',
-						description: 'Set multiple keys at once',
-						action: 'Set multiple keys at once in redis',
+						description: 'Set multiple string keys at once (Redis native)',
+						action: 'Set multiple string keys at once in redis',
+					},
+					{
+						name: 'Multi Mix Set',
+						value: 'mxset',
+						description: 'Set multiple keys with automatic type detection (string, hash, list, set)',
+						action: 'Set multiple mixed-type keys in redis',
 					},
 					{
 						name: 'Persist',
@@ -278,7 +290,7 @@ export class RedisEnhanced implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Name of the key(s) to delete from Redis. For multiple keys, separate with spaces (e.g., "key1 key2 key3")',
+				description: 'Name of the key(s) to delete from Redis. For multiple keys, separate with spaces (e.g., "key1 key2 key3").',
 			},
 
 			// ----------------------------------
@@ -725,8 +737,26 @@ export class RedisEnhanced implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Key names to get (space-separated)',
+				description: 'Key names to get (space-separated) - strings only',
 				placeholder: 'key1 key2 key3',
+			},
+
+			// ----------------------------------
+			//         mxget (multi mix get)
+			// ----------------------------------
+			{
+				displayName: 'Keys',
+				name: 'keys',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['mxget'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Key names to get with automatic type detection (space-separated)',
+				placeholder: 'string_key hash_key list_key set_key',
 			},
 
 			// ----------------------------------
@@ -743,8 +773,26 @@ export class RedisEnhanced implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Key-value pairs in format: key1 value1 key2 value2',
+				description: 'Key-value pairs in format: key1 value1 key2 value2 (strings only)',
 				placeholder: 'key1 value1 key2 value2',
+			},
+
+			// ----------------------------------
+			//         mxset (multi mix set)
+			// ----------------------------------
+			{
+				displayName: 'Key-Value Pairs',
+				name: 'keyValuePairs',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['mxset'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Key-value pairs with JSON support: key1 "string_val" key2 {"field":"value"} key3 ["item1","item2"]',
+				placeholder: 'key1 "simple" key2 {"hash":"data"} key3 ["list","data"]',
 			},
 
 			// ----------------------------------
@@ -1209,7 +1257,7 @@ export class RedisEnhanced implements INodeType {
 		} else if (
 			[
 				'delete', 'get', 'keys', 'set', 'incr', 'publish', 'push', 'pop',
-				'exists', 'mget', 'mset', 'scan', 'ttl', 'persist', 'expireat',
+				'exists', 'mget', 'mxget', 'mset', 'mxset', 'scan', 'ttl', 'persist', 'expireat',
 				'getset', 'append', 'strlen', 'blpop', 'brpop', 'llen', 'lrange',
 				'sadd', 'srem', 'sismember', 'scard',
 				'zadd', 'zrange', 'zrem', 'zcard',
@@ -1332,6 +1380,18 @@ export class RedisEnhanced implements INodeType {
 						const keys = this.getNodeParameter('keys', itemIndex) as string;
 						const keyArray = keys.split(/\s+/).filter(k => k.length > 0);
 						
+						// Use Redis native MGET for strings only
+						const values = await client.mGet(keyArray);
+						const result: any = {};
+						for (let i = 0; i < keyArray.length; i++) {
+							result[keyArray[i]] = values[i];
+						}
+						
+						returnItems.push({ json: result });
+					} else if (operation === 'mxget') {
+						const keys = this.getNodeParameter('keys', itemIndex) as string;
+						const keyArray = keys.split(/\s+/).filter(k => k.length > 0);
+						
 						// Handle mixed data types by getting each key individually with type detection
 						const result: any = {};
 						for (const key of keyArray) {
@@ -1356,6 +1416,90 @@ export class RedisEnhanced implements INodeType {
 							msetObj[pairs[i]] = pairs[i + 1];
 						}
 						await client.mSet(msetObj);
+						returnItems.push(items[itemIndex]);
+					} else if (operation === 'mxset') {
+						const keyValuePairs = this.getNodeParameter('keyValuePairs', itemIndex) as string;
+						
+						// Parse the input string manually to handle JSON values
+						const pairs = [];
+						let i = 0;
+						const input = keyValuePairs.trim();
+						
+						while (i < input.length) {
+							// Skip whitespace
+							while (i < input.length && /\s/.test(input[i])) i++;
+							if (i >= input.length) break;
+							
+							// Get key (simple word)
+							let key = '';
+							while (i < input.length && !/\s/.test(input[i])) {
+								key += input[i++];
+							}
+							if (!key) break;
+							
+							// Skip whitespace
+							while (i < input.length && /\s/.test(input[i])) i++;
+							if (i >= input.length) {
+								// No value for this key - invalid
+								pairs.push(key); // This will make length odd
+								break;
+							}
+							
+							// Get value (could be quoted string, JSON object, or simple value)
+							let value = '';
+							if (input[i] === '"') {
+								// Quoted string
+								i++; // Skip opening quote
+								while (i < input.length && input[i] !== '"') {
+									if (input[i] === '\\' && i + 1 < input.length) {
+										value += input[i] + input[i + 1];
+										i += 2;
+									} else {
+										value += input[i++];
+									}
+								}
+								if (i < input.length) i++; // Skip closing quote
+							} else if (input[i] === '{' || input[i] === '[') {
+								// JSON object or array
+								const startChar = input[i];
+								const endChar = startChar === '{' ? '}' : ']';
+								let depth = 0;
+								while (i < input.length) {
+									if (input[i] === startChar) depth++;
+									if (input[i] === endChar) depth--;
+									value += input[i++];
+									if (depth === 0) break;
+								}
+							} else {
+								// Simple value (until next space)
+								while (i < input.length && !/\s/.test(input[i])) {
+									value += input[i++];
+								}
+							}
+							
+							pairs.push(key, value);
+						}
+						
+						if (pairs.length % 2 !== 0) {
+							throw new NodeOperationError(this.getNode(), 'Key-value pairs must be even number of arguments');
+						}
+						
+						// Process each key-value pair with automatic type detection
+						for (let j = 0; j < pairs.length; j += 2) {
+							const key = pairs[j];
+							let value = pairs[j + 1];
+							
+							// Try to parse as JSON
+							try {
+								value = JSON.parse(value);
+							} catch {
+								// Keep as string if not valid JSON
+							}
+							
+							// Use setValue for automatic type detection
+							await setValue.call(this, client, key, value, false, -1, 'automatic', true);
+						}
+						
 						returnItems.push(items[itemIndex]);
 					} else if (operation === 'scan') {
 						const cursor = this.getNodeParameter('cursor', itemIndex) as number;

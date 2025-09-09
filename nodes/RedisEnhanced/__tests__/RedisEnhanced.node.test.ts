@@ -180,7 +180,7 @@ describe('RedisEnhanced Node', () => {
 			expect(operationValues).toContain('zrem');
 
 			// Verify total operations count
-			expect(operationValues).toHaveLength(36);
+			expect(operationValues).toHaveLength(38);
 		});
 
 		it('should have Redis credentials configured', () => {
@@ -555,32 +555,18 @@ master_failover_state:no-failover
 		});
 
 		describe('mget operation', () => {
-			it('should get multiple keys with type detection', async () => {
+			it('should get multiple string keys using Redis native MGET', async () => {
 				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
 				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('mget');
 				thisArg.getNodeParameter.calledWith('keys', 0).mockReturnValue('key1 key2 key3');
 				
-				// Mock type detection for each key
-				mockClient.type.calledWith('key1').mockResolvedValue('string');
-				mockClient.type.calledWith('key2').mockResolvedValue('string');
-				mockClient.type.calledWith('key3').mockResolvedValue('string');
-				
-				// Mock get responses
-				mockClient.get.calledWith('key1').mockResolvedValue('value1');
-				mockClient.get.calledWith('key2').mockResolvedValue('value2');
-				mockClient.get.calledWith('key3').mockResolvedValue(null);
+				// Mock Redis native mGet
+				mockClient.mGet.mockResolvedValue(['value1', 'value2', null]);
 
 				const output = await node.execute.call(thisArg);
 				
-				// Verify type detection was called for each key
-				expect(mockClient.type).toHaveBeenCalledWith('key1');
-				expect(mockClient.type).toHaveBeenCalledWith('key2');
-				expect(mockClient.type).toHaveBeenCalledWith('key3');
-				
-				// Verify get was called for string types
-				expect(mockClient.get).toHaveBeenCalledWith('key1');
-				expect(mockClient.get).toHaveBeenCalledWith('key2');
-				expect(mockClient.get).toHaveBeenCalledWith('key3');
+				// Verify mGet was called with key array
+				expect(mockClient.mGet).toHaveBeenCalledWith(['key1', 'key2', 'key3']);
 				
 				expect(output[0][0].json).toEqual({
 					key1: 'value1',
@@ -590,8 +576,44 @@ master_failover_state:no-failover
 			});
 		});
 
+		describe('mxget operation', () => {
+			it('should get multiple keys with automatic type detection', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('mxget');
+				thisArg.getNodeParameter.calledWith('keys', 0).mockReturnValue('key1 key2 key3');
+				
+				// Mock type detection for each key
+				mockClient.type.calledWith('key1').mockResolvedValue('string');
+				mockClient.type.calledWith('key2').mockResolvedValue('hash');
+				mockClient.type.calledWith('key3').mockResolvedValue('list');
+				
+				// Mock responses for different types
+				mockClient.get.calledWith('key1').mockResolvedValue('value1');
+				mockClient.hGetAll.calledWith('key2').mockResolvedValue({ field1: 'value1', field2: 'value2' });
+				mockClient.lRange.calledWith('key3', 0, -1).mockResolvedValue(['item1', 'item2']);
+
+				const output = await node.execute.call(thisArg);
+				
+				// Verify type detection was called for each key
+				expect(mockClient.type).toHaveBeenCalledWith('key1');
+				expect(mockClient.type).toHaveBeenCalledWith('key2');
+				expect(mockClient.type).toHaveBeenCalledWith('key3');
+				
+				// Verify appropriate get methods were called
+				expect(mockClient.get).toHaveBeenCalledWith('key1');
+				expect(mockClient.hGetAll).toHaveBeenCalledWith('key2');
+				expect(mockClient.lRange).toHaveBeenCalledWith('key3', 0, -1);
+				
+				expect(output[0][0].json).toEqual({
+					key1: 'value1',
+					key2: { field1: 'value1', field2: 'value2' },
+					key3: ['item1', 'item2']
+				});
+			});
+		});
+
 		describe('mset operation', () => {
-			it('should set multiple keys', async () => {
+			it('should set multiple string keys using Redis native MSET', async () => {
 				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
 				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('mset');
 				thisArg.getNodeParameter.calledWith('keyValuePairs', 0).mockReturnValue('key1 value1 key2 value2');
@@ -606,6 +628,40 @@ master_failover_state:no-failover
 				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
 				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('mset');
 				thisArg.getNodeParameter.calledWith('keyValuePairs', 0).mockReturnValue('key1 value1 key2');
+
+				await expect(node.execute.call(thisArg)).rejects.toThrow(
+					'Key-value pairs must be even number of arguments'
+				);
+			});
+		});
+
+		describe('mxset operation', () => {
+			it('should set multiple mixed-type keys with JSON parsing', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('mxset');
+				thisArg.getNodeParameter.calledWith('keyValuePairs', 0).mockReturnValue('key1 "stringval" key2 {"field":"value"} key3 ["item1","item2"]');
+				
+				// Mock setValue calls
+				mockClient.set.mockResolvedValue('OK');
+				mockClient.hSet.mockResolvedValue(1);
+				mockClient.lSet.mockResolvedValue('OK');
+
+				const output = await node.execute.call(thisArg);
+				
+				// Verify different set operations were called based on data types
+				expect(mockClient.set).toHaveBeenCalledWith('key1', 'stringval');
+				expect(mockClient.hSet).toHaveBeenCalledWith('key2', 'field', 'value');
+				// For arrays, lSet would be called for each index
+				expect(mockClient.lSet).toHaveBeenCalledWith('key3', 0, 'item1');
+				expect(mockClient.lSet).toHaveBeenCalledWith('key3', 1, 'item2');
+				
+				expect(output[0][0].json).toEqual({ x: 1 });
+			});
+
+			it('should validate odd number of arguments', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('mxset');
+				thisArg.getNodeParameter.calledWith('keyValuePairs', 0).mockReturnValue('key1 "value1" key2');
 
 				await expect(node.execute.call(thisArg)).rejects.toThrow(
 					'Key-value pairs must be even number of arguments'
@@ -741,6 +797,6 @@ master_failover_state:no-failover
 		});
 
 		// Additional operation tests would continue here...
-		// This provides the comprehensive pattern for testing all 36 operations
+		// This provides the comprehensive pattern for testing all 38 operations
 	});
 });
