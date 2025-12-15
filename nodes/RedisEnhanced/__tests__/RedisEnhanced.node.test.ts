@@ -1059,7 +1059,107 @@ master_failover_state:no-failover
 			});
 		});
 
+		describe('zrem operation', () => {
+			it('should remove members by name (default)', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('zrem');
+				thisArg.getNodeParameter.calledWith('sortedSet', 0).mockReturnValue('myzset');
+				thisArg.getNodeParameter.calledWith('removeBy', 0).mockReturnValue('members');
+				thisArg.getNodeParameter.calledWith('members', 0).mockReturnValue('member1 member2');
+				mockClient.zRem.mockResolvedValue(2);
+
+				const output = await node.execute.call(thisArg);
+
+				expect(mockClient.zRem).toHaveBeenCalledWith('myzset', ['member1', 'member2']);
+				expect(output[0][0].json).toEqual({
+					sortedSet: 'myzset',
+					removed: 2,
+					members: ['member1', 'member2']
+				});
+			});
+
+			it('should remove by score range', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('zrem');
+				thisArg.getNodeParameter.calledWith('sortedSet', 0).mockReturnValue('myzset');
+				thisArg.getNodeParameter.calledWith('removeBy', 0).mockReturnValue('score');
+				thisArg.getNodeParameter.calledWith('minScore', 0).mockReturnValue('0');
+				thisArg.getNodeParameter.calledWith('maxScore', 0).mockReturnValue('100');
+				mockClient.zRemRangeByScore.mockResolvedValue(5);
+
+				const output = await node.execute.call(thisArg);
+
+				expect(mockClient.zRemRangeByScore).toHaveBeenCalledWith('myzset', '0', '100');
+				expect(output[0][0].json).toEqual({
+					sortedSet: 'myzset',
+					removed: 5,
+					minScore: '0',
+					maxScore: '100'
+				});
+			});
+
+			it('should remove by score range with infinity', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('zrem');
+				thisArg.getNodeParameter.calledWith('sortedSet', 0).mockReturnValue('myzset');
+				thisArg.getNodeParameter.calledWith('removeBy', 0).mockReturnValue('score');
+				thisArg.getNodeParameter.calledWith('minScore', 0).mockReturnValue('-inf');
+				thisArg.getNodeParameter.calledWith('maxScore', 0).mockReturnValue('+inf');
+				mockClient.zRemRangeByScore.mockResolvedValue(10);
+
+				const output = await node.execute.call(thisArg);
+
+				expect(mockClient.zRemRangeByScore).toHaveBeenCalledWith('myzset', '-inf', '+inf');
+				expect(output[0][0].json).toEqual({
+					sortedSet: 'myzset',
+					removed: 10,
+					minScore: '-inf',
+					maxScore: '+inf'
+				});
+			});
+
+			it('should remove by rank range', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('zrem');
+				thisArg.getNodeParameter.calledWith('sortedSet', 0).mockReturnValue('myzset');
+				thisArg.getNodeParameter.calledWith('removeBy', 0).mockReturnValue('rank');
+				thisArg.getNodeParameter.calledWith('start', 0).mockReturnValue(0);
+				thisArg.getNodeParameter.calledWith('stop', 0).mockReturnValue(9);
+				mockClient.zRemRangeByRank.mockResolvedValue(10);
+
+				const output = await node.execute.call(thisArg);
+
+				expect(mockClient.zRemRangeByRank).toHaveBeenCalledWith('myzset', 0, 9);
+				expect(output[0][0].json).toEqual({
+					sortedSet: 'myzset',
+					removed: 10,
+					start: 0,
+					stop: 9
+				});
+			});
+
+			it('should remove by rank range with negative indices', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('zrem');
+				thisArg.getNodeParameter.calledWith('sortedSet', 0).mockReturnValue('myzset');
+				thisArg.getNodeParameter.calledWith('removeBy', 0).mockReturnValue('rank');
+				thisArg.getNodeParameter.calledWith('start', 0).mockReturnValue(-10);
+				thisArg.getNodeParameter.calledWith('stop', 0).mockReturnValue(-1);
+				mockClient.zRemRangeByRank.mockResolvedValue(10);
+
+				const output = await node.execute.call(thisArg);
+
+				expect(mockClient.zRemRangeByRank).toHaveBeenCalledWith('myzset', -10, -1);
+				expect(output[0][0].json).toEqual({
+					sortedSet: 'myzset',
+					removed: 10,
+					start: -10,
+					stop: -1
+				});
+			});
+		});
+
 		// Additional operation tests would continue here...
-		// This provides the comprehensive pattern for testing all 41 operations
+		// This provides the comprehensive pattern for testing all 44 operations
 	});
 });

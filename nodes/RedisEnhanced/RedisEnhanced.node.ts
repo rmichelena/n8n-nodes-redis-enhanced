@@ -1295,18 +1295,106 @@ export class RedisEnhanced implements INodeType {
 				description: 'Whether to include scores in the result',
 			},
 			{
+				displayName: 'Remove By',
+				name: 'removeBy',
+				type: 'options',
+				displayOptions: {
+					show: {
+						operation: ['zrem'],
+					},
+				},
+				options: [
+					{
+						name: 'Members',
+						value: 'members',
+						description: 'Remove specific members by name',
+					},
+					{
+						name: 'Score Range',
+						value: 'score',
+						description: 'Remove members within a score range (ZREMRANGEBYSCORE)',
+					},
+					{
+						name: 'Rank Range',
+						value: 'rank',
+						description: 'Remove members within a rank/index range (ZREMRANGEBYRANK)',
+					},
+				],
+				default: 'members',
+				description: 'Method to use for removing elements from the sorted set',
+			},
+			{
 				displayName: 'Members',
 				name: 'members',
 				type: 'string',
 				displayOptions: {
 					show: {
 						operation: ['zrem'],
+						removeBy: ['members'],
 					},
 				},
 				default: '',
 				required: true,
 				description: 'Members to remove (space-separated)',
 				placeholder: 'member1 member2 member3',
+			},
+			{
+				displayName: 'Min Score',
+				name: 'minScore',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['zrem'],
+						removeBy: ['score'],
+					},
+				},
+				default: '-inf',
+				required: true,
+				description: 'Minimum score (inclusive). Use -inf for negative infinity, +inf for positive infinity',
+				placeholder: '0 or -inf',
+			},
+			{
+				displayName: 'Max Score',
+				name: 'maxScore',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['zrem'],
+						removeBy: ['score'],
+					},
+				},
+				default: '+inf',
+				required: true,
+				description: 'Maximum score (inclusive). Use -inf for negative infinity, +inf for positive infinity',
+				placeholder: '100 or +inf',
+			},
+			{
+				displayName: 'Start Index',
+				name: 'start',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: ['zrem'],
+						removeBy: ['rank'],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'Start rank/index (0-based, negative values allowed)',
+			},
+			{
+				displayName: 'Stop Index',
+				name: 'stop',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: ['zrem'],
+						removeBy: ['rank'],
+					},
+				},
+				default: -1,
+				required: true,
+				description: 'Stop rank/index (inclusive, -1 for last element)',
 			},
 
 			// ----------------------------------
@@ -1865,10 +1953,29 @@ export class RedisEnhanced implements INodeType {
 						returnItems.push({ json: { sortedSet, result } });
 					} else if (operation === 'zrem') {
 						const sortedSet = this.getNodeParameter('sortedSet', itemIndex) as string;
-						const members = this.getNodeParameter('members', itemIndex) as string;
-						const memberArray = members.split(/\s+/).filter(m => m.length > 0);
-						const removed = await client.zRem(sortedSet, memberArray);
-						returnItems.push({ json: { sortedSet, removed, members: memberArray } });
+						const removeBy = this.getNodeParameter('removeBy', itemIndex, 'members') as string;
+
+						let removed: number;
+
+						if (removeBy === 'members') {
+							// Remove by member names (default behavior)
+							const members = this.getNodeParameter('members', itemIndex) as string;
+							const memberArray = members.split(/\s+/).filter(m => m.length > 0);
+							removed = await client.zRem(sortedSet, memberArray);
+							returnItems.push({ json: { sortedSet, removed, members: memberArray } });
+						} else if (removeBy === 'score') {
+							// Remove by score range (ZREMRANGEBYSCORE)
+							const minScore = this.getNodeParameter('minScore', itemIndex) as string;
+							const maxScore = this.getNodeParameter('maxScore', itemIndex) as string;
+							removed = await client.zRemRangeByScore(sortedSet, minScore, maxScore);
+							returnItems.push({ json: { sortedSet, removed, minScore, maxScore } });
+						} else if (removeBy === 'rank') {
+							// Remove by rank range (ZREMRANGEBYRANK)
+							const start = this.getNodeParameter('start', itemIndex) as number;
+							const stop = this.getNodeParameter('stop', itemIndex) as number;
+							removed = await client.zRemRangeByRank(sortedSet, start, stop);
+							returnItems.push({ json: { sortedSet, removed, start, stop } });
+						}
 					} else if (operation === 'zcard') {
 						const sortedSet = this.getNodeParameter('sortedSet', itemIndex) as string;
 						const cardinality = await client.zCard(sortedSet);

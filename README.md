@@ -85,7 +85,7 @@ Redis Enhanced provides 44 comprehensive operations organized by category:
 ### 📊 **Sorted Set Operations**
 - **Sorted Set Add (ZADD)** - Add scored members to sorted sets
 - **Sorted Set Range (ZRANGE)** - Get ranges with optional scores
-- **Sorted Set Remove (ZREM)** - Remove members from sorted sets
+- **Sorted Set Remove (ZREM)** - Remove members by name, score range, or rank range
 - **Sorted Set Cardinality (ZCARD)** - Get sorted set size
 
 ### 🗂️ **Hash Operations**
@@ -282,6 +282,33 @@ To use Redis Enhanced, you need to set up Redis credentials in n8n:
    # Removes all elements matching the value (count=0 removes all)
 ```
 
+### Sorted Set Range Removal Example
+```yaml
+# Workflow: Managing leaderboards and time-series data with sorted sets
+1. Redis Enhanced (ZREM - Remove by Score Range)
+   - Operation: Sorted Set Remove
+   - Sorted Set: leaderboard:game:123
+   - Remove By: Score Range
+   - Min Score: 0
+   - Max Score: 100
+   # Removes all players with scores between 0-100
+
+2. Redis Enhanced (ZREM - Remove by Rank Range)
+   - Operation: Sorted Set Remove
+   - Sorted Set: events:recent
+   - Remove By: Rank Range
+   - Start Index: 0
+   - Stop Index: 99
+   # Keeps only top 100 events, removes the rest
+
+3. Redis Enhanced (ZREM - Remove by Members)
+   - Operation: Sorted Set Remove
+   - Sorted Set: active:users
+   - Remove By: Members
+   - Members: user:123 user:456 user:789
+   # Removes specific members by name
+```
+
 ### Production Tips
 
 #### **Bulk Operations Strategy**
@@ -321,7 +348,7 @@ npm run lintfix   # Auto-fix linting issues
 
 ## Testing
 
-The project includes comprehensive test coverage with 55+ tests covering all operations:
+The project includes comprehensive test coverage with 60+ tests covering all operations:
 
 ```bash
 npm test              # Run all tests
@@ -330,7 +357,7 @@ npm run test:coverage # Run with coverage report
 ```
 
 ### Test Coverage
-- **55 passing tests** across all operations
+- **60 passing tests** across all operations
 - **42.97% code coverage** with detailed branch coverage
 - **Infrastructure testing** (connection, client setup)
 - **Operation testing** (all 44 operations)
@@ -356,20 +383,22 @@ npm run test:coverage # Run with coverage report
 ## Version History
 
 ### v0.2.5 (Current)
-- **List Operations Enhancement** with 44 Redis operations
+- **List & Sorted Set Operations Enhancement** with 44 Redis operations
 - **🆕 New LSET Operation** - Set the value of an element in a list by index
 - **🆕 New LTRIM Operation** - Trim a list to the specified range for efficient queue management
 - **🆕 New LREM Operation** - Remove elements from a list by value with flexible count options
-- **🧪 Enhanced Testing** - 55 comprehensive tests covering all operations including new list operations
-- **📖 Updated Documentation** - Complete list manipulation examples and usage guides
-- **🔧 Production Ready** - Advanced list management for queue processing and data cleanup
+- **✨ Enhanced ZREM Operation** - Now supports removal by members, score range (ZREMRANGEBYSCORE), or rank range (ZREMRANGEBYRANK)
+- **🧪 Enhanced Testing** - 60 comprehensive tests covering all operations including new list and sorted set capabilities
+- **📖 Updated Documentation** - Complete list manipulation and sorted set range removal examples
+- **🔧 Production Ready** - Advanced list management for queue processing and leaderboard cleanup
 
 #### What's New in v0.2.5:
 - ✅ **LSET Operation**: Update individual list elements by index (supports negative indices)
 - ✅ **LTRIM Operation**: Trim lists to specific ranges for efficient memory management
 - ✅ **LREM Operation**: Remove elements by value with count control (remove first N, last N, or all)
-- ✅ **Enhanced Testing**: 55 tests with comprehensive coverage including edge cases and negative indices
-- ✅ **Better Documentation**: Practical examples for notification queues and list management workflows
+- ✅ **ZREM Enhancement**: Remove by members (default), score range (-inf to +inf), or rank range (0-based indices)
+- ✅ **Enhanced Testing**: 60 tests with comprehensive coverage including sorted set range operations
+- ✅ **Better Documentation**: Practical examples for leaderboards, notification queues, and time-series data cleanup
 
 ### v0.2.4
 - **Documentation Enhancement** - Clear distinction between native and custom operations
