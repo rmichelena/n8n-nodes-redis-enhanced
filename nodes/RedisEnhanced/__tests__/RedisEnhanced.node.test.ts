@@ -163,6 +163,9 @@ describe('RedisEnhanced Node', () => {
 			expect(operationValues).toContain('keys');
 			expect(operationValues).toContain('llen');
 			expect(operationValues).toContain('lrange');
+			expect(operationValues).toContain('lrem');
+			expect(operationValues).toContain('lset');
+			expect(operationValues).toContain('ltrim');
 			expect(operationValues).toContain('mget');
 			expect(operationValues).toContain('mset');
 			expect(operationValues).toContain('persist');
@@ -183,7 +186,7 @@ describe('RedisEnhanced Node', () => {
 			expect(operationValues).toContain('zrem');
 
 			// Verify total operations count
-			expect(operationValues).toHaveLength(41);
+			expect(operationValues).toHaveLength(44);
 		});
 
 		it('should have Redis credentials configured', () => {
@@ -788,13 +791,150 @@ master_failover_state:no-failover
 				mockClient.lRange.mockResolvedValue([]);
 
 				const output = await node.execute.call(thisArg);
-				
+
 				expect(mockClient.lRange).toHaveBeenCalledWith('emptylist', 0, -1);
 				expect(output[0][0].json).toEqual({
 					list: 'emptylist',
 					start: 0,
 					stop: -1,
 					elements: []
+				});
+			});
+		});
+
+		describe('lset operation', () => {
+			it('should set list element at index', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('lset');
+				thisArg.getNodeParameter.calledWith('list', 0).mockReturnValue('mylist');
+				thisArg.getNodeParameter.calledWith('index', 0).mockReturnValue(2);
+				thisArg.getNodeParameter.calledWith('value', 0).mockReturnValue('newvalue');
+				mockClient.lSet.mockResolvedValue('OK');
+
+				const output = await node.execute.call(thisArg);
+
+				expect(mockClient.lSet).toHaveBeenCalledWith('mylist', 2, 'newvalue');
+				expect(output[0][0].json).toEqual({
+					list: 'mylist',
+					index: 2,
+					value: 'newvalue'
+				});
+			});
+
+			it('should handle negative index', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('lset');
+				thisArg.getNodeParameter.calledWith('list', 0).mockReturnValue('mylist');
+				thisArg.getNodeParameter.calledWith('index', 0).mockReturnValue(-1);
+				thisArg.getNodeParameter.calledWith('value', 0).mockReturnValue('lastvalue');
+				mockClient.lSet.mockResolvedValue('OK');
+
+				const output = await node.execute.call(thisArg);
+
+				expect(mockClient.lSet).toHaveBeenCalledWith('mylist', -1, 'lastvalue');
+				expect(output[0][0].json).toEqual({
+					list: 'mylist',
+					index: -1,
+					value: 'lastvalue'
+				});
+			});
+		});
+
+		describe('ltrim operation', () => {
+			it('should trim list to specified range', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('ltrim');
+				thisArg.getNodeParameter.calledWith('list', 0).mockReturnValue('mylist');
+				thisArg.getNodeParameter.calledWith('start', 0).mockReturnValue(0);
+				thisArg.getNodeParameter.calledWith('stop', 0).mockReturnValue(4);
+				mockClient.lTrim.mockResolvedValue('OK');
+
+				const output = await node.execute.call(thisArg);
+
+				expect(mockClient.lTrim).toHaveBeenCalledWith('mylist', 0, 4);
+				expect(output[0][0].json).toEqual({
+					list: 'mylist',
+					start: 0,
+					stop: 4,
+					trimmed: true
+				});
+			});
+
+			it('should handle negative indices', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('ltrim');
+				thisArg.getNodeParameter.calledWith('list', 0).mockReturnValue('mylist');
+				thisArg.getNodeParameter.calledWith('start', 0).mockReturnValue(-10);
+				thisArg.getNodeParameter.calledWith('stop', 0).mockReturnValue(-1);
+				mockClient.lTrim.mockResolvedValue('OK');
+
+				const output = await node.execute.call(thisArg);
+
+				expect(mockClient.lTrim).toHaveBeenCalledWith('mylist', -10, -1);
+				expect(output[0][0].json).toEqual({
+					list: 'mylist',
+					start: -10,
+					stop: -1,
+					trimmed: true
+				});
+			});
+		});
+
+		describe('lrem operation', () => {
+			it('should remove all occurrences when count is 0', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('lrem');
+				thisArg.getNodeParameter.calledWith('list', 0).mockReturnValue('mylist');
+				thisArg.getNodeParameter.calledWith('count', 0).mockReturnValue(0);
+				thisArg.getNodeParameter.calledWith('value', 0).mockReturnValue('removeMe');
+				mockClient.lRem.mockResolvedValue(3);
+
+				const output = await node.execute.call(thisArg);
+
+				expect(mockClient.lRem).toHaveBeenCalledWith('mylist', 0, 'removeMe');
+				expect(output[0][0].json).toEqual({
+					list: 'mylist',
+					count: 0,
+					value: 'removeMe',
+					removed: 3
+				});
+			});
+
+			it('should remove from head when count is positive', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('lrem');
+				thisArg.getNodeParameter.calledWith('list', 0).mockReturnValue('mylist');
+				thisArg.getNodeParameter.calledWith('count', 0).mockReturnValue(2);
+				thisArg.getNodeParameter.calledWith('value', 0).mockReturnValue('value');
+				mockClient.lRem.mockResolvedValue(2);
+
+				const output = await node.execute.call(thisArg);
+
+				expect(mockClient.lRem).toHaveBeenCalledWith('mylist', 2, 'value');
+				expect(output[0][0].json).toEqual({
+					list: 'mylist',
+					count: 2,
+					value: 'value',
+					removed: 2
+				});
+			});
+
+			it('should remove from tail when count is negative', async () => {
+				thisArg.getInputData.mockReturnValue([{ json: { x: 1 } }]);
+				thisArg.getNodeParameter.calledWith('operation', 0).mockReturnValue('lrem');
+				thisArg.getNodeParameter.calledWith('list', 0).mockReturnValue('mylist');
+				thisArg.getNodeParameter.calledWith('count', 0).mockReturnValue(-1);
+				thisArg.getNodeParameter.calledWith('value', 0).mockReturnValue('value');
+				mockClient.lRem.mockResolvedValue(1);
+
+				const output = await node.execute.call(thisArg);
+
+				expect(mockClient.lRem).toHaveBeenCalledWith('mylist', -1, 'value');
+				expect(output[0][0].json).toEqual({
+					list: 'mylist',
+					count: -1,
+					value: 'value',
+					removed: 1
 				});
 			});
 		});

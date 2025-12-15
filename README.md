@@ -2,7 +2,7 @@
 
 This is an n8n community node that provides comprehensive Redis integration with enhanced operations for your n8n workflows.
 
-Redis Enhanced extends the basic Redis functionality with 41+ operations including atomic operations, bulk operations, advanced data structures (sets, sorted sets, hashes), TTL management, Lua scripting, and pub/sub capabilities.
+Redis Enhanced extends the basic Redis functionality with 44+ operations including atomic operations, bulk operations, advanced data structures (sets, sorted sets, hashes), TTL management, Lua scripting, and pub/sub capabilities.
 
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/reference/license/) workflow automation platform.
 
@@ -34,7 +34,7 @@ npm install @rmichelena/n8n-nodes-redis-enhanced
 
 ## Operations
 
-Redis Enhanced provides 41 comprehensive operations organized by category:
+Redis Enhanced provides 44 comprehensive operations organized by category:
 
 ### 🔑 **Basic Operations**
 - **Get** - Retrieve values from Redis with automatic type detection
@@ -69,9 +69,12 @@ Redis Enhanced provides 41 comprehensive operations organized by category:
 - **Push** - Add elements to lists (left/right)
 - **Pop** - Remove elements from lists (left/right)
 - **Blocking Pop Left (BLPOP)** - Blocking pop from list start
-- **Blocking Pop Right (BRPOP)** - Blocking pop from list end  
+- **Blocking Pop Right (BRPOP)** - Blocking pop from list end
 - **List Length** - Get the number of elements in a list
 - **List Range (LRANGE)** - Get a range of elements from a list
+- **List Set (LSET)** - Set the value of an element in a list by index
+- **List Trim (LTRIM)** - Trim a list to the specified range
+- **List Remove (LREM)** - Remove elements from a list by value
 
 ### 🎯 **Set Operations**
 - **Set Add (SADD)** - Add members to sets
@@ -254,6 +257,31 @@ To use Redis Enhanced, you need to set up Redis credentials in n8n:
    # Returns: { email: "user@example.com", name: "John", age: "30", city: "NYC" }
 ```
 
+### List Manipulation Example
+```yaml
+# Workflow: Managing notification queues with advanced list operations
+1. Redis Enhanced (LSET)
+   - Operation: List Set
+   - List: notifications:user:123
+   - Index: 2
+   - Value: {"message": "Updated notification", "read": true}
+   # Updates a specific element in the list by index
+
+2. Redis Enhanced (LTRIM)
+   - Operation: List Trim
+   - List: notifications:user:123
+   - Start: 0
+   - Stop: 99
+   # Keeps only the first 100 elements (removes older notifications)
+
+3. Redis Enhanced (LREM)
+   - Operation: List Remove
+   - List: notifications:user:123
+   - Count: 0
+   - Value: {"type": "spam"}
+   # Removes all elements matching the value (count=0 removes all)
+```
+
 ### Production Tips
 
 #### **Bulk Operations Strategy**
@@ -293,7 +321,7 @@ npm run lintfix   # Auto-fix linting issues
 
 ## Testing
 
-The project includes comprehensive test coverage with 48+ tests covering all operations:
+The project includes comprehensive test coverage with 55+ tests covering all operations:
 
 ```bash
 npm test              # Run all tests
@@ -302,10 +330,10 @@ npm run test:coverage # Run with coverage report
 ```
 
 ### Test Coverage
-- **48 passing tests** across all operations
+- **55 passing tests** across all operations
 - **42.97% code coverage** with detailed branch coverage
 - **Infrastructure testing** (connection, client setup)
-- **Operation testing** (all 41 operations)
+- **Operation testing** (all 44 operations)
 - **Error handling** (continue-on-fail scenarios)
 - **Parameter validation** (input validation)
 
@@ -327,10 +355,26 @@ npm run test:coverage # Run with coverage report
 
 ## Version History
 
-### v0.2.4 (Current)
+### v0.2.5 (Current)
+- **List Operations Enhancement** with 44 Redis operations
+- **🆕 New LSET Operation** - Set the value of an element in a list by index
+- **🆕 New LTRIM Operation** - Trim a list to the specified range for efficient queue management
+- **🆕 New LREM Operation** - Remove elements from a list by value with flexible count options
+- **🧪 Enhanced Testing** - 55 comprehensive tests covering all operations including new list operations
+- **📖 Updated Documentation** - Complete list manipulation examples and usage guides
+- **🔧 Production Ready** - Advanced list management for queue processing and data cleanup
+
+#### What's New in v0.2.5:
+- ✅ **LSET Operation**: Update individual list elements by index (supports negative indices)
+- ✅ **LTRIM Operation**: Trim lists to specific ranges for efficient memory management
+- ✅ **LREM Operation**: Remove elements by value with count control (remove first N, last N, or all)
+- ✅ **Enhanced Testing**: 55 tests with comprehensive coverage including edge cases and negative indices
+- ✅ **Better Documentation**: Practical examples for notification queues and list management workflows
+
+### v0.2.4
 - **Documentation Enhancement** - Clear distinction between native and custom operations
 - **🆕 Enhanced MXGET/MXSET Documentation** - Detailed explanation of custom mixed-type operations
-- **📖 Updated Examples** - Separate examples for native vs custom bulk operations  
+- **📖 Updated Examples** - Separate examples for native vs custom bulk operations
 - **🎯 Production Guidelines** - Performance considerations and best practices for bulk operations
 - **🔧 Technical Clarity** - Clear explanation of atomic vs non-atomic operations
 

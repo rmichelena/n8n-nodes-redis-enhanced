@@ -165,6 +165,24 @@ export class RedisEnhanced implements INodeType {
 						action: 'Get range of elements from list',
 					},
 					{
+						name: 'List Remove',
+						value: 'lrem',
+						description: 'Remove elements from a list by value',
+						action: 'Remove elements from list by value',
+					},
+					{
+						name: 'List Set',
+						value: 'lset',
+						description: 'Set the value of an element in a list by index',
+						action: 'Set list element value by index',
+					},
+					{
+						name: 'List Trim',
+						value: 'ltrim',
+						description: 'Trim a list to the specified range',
+						action: 'Trim list to specified range',
+					},
+					{
 						name: 'Multi Get',
 						value: 'mget',
 						description: 'Get multiple string keys at once (Redis native)',
@@ -1038,6 +1056,135 @@ export class RedisEnhanced implements INodeType {
 			},
 
 			// ----------------------------------
+			//         list set (LSET)
+			// ----------------------------------
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['lset'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Name of the list',
+			},
+			{
+				displayName: 'Index',
+				name: 'index',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: ['lset'],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'Index of the element to set (0-based, negative values allowed)',
+			},
+			{
+				displayName: 'Value',
+				name: 'value',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['lset'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Value to set at the specified index',
+			},
+
+			// ----------------------------------
+			//         list trim (LTRIM)
+			// ----------------------------------
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['ltrim'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Name of the list to trim',
+			},
+			{
+				displayName: 'Start Index',
+				name: 'start',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: ['ltrim'],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'Start index (0-based, negative values allowed)',
+			},
+			{
+				displayName: 'Stop Index',
+				name: 'stop',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: ['ltrim'],
+					},
+				},
+				default: -1,
+				required: true,
+				description: 'Stop index (inclusive, -1 for last element)',
+			},
+
+			// ----------------------------------
+			//         list remove (LREM)
+			// ----------------------------------
+			{
+				displayName: 'List',
+				name: 'list',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['lrem'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Name of the list',
+			},
+			{
+				displayName: 'Count',
+				name: 'count',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: ['lrem'],
+					},
+				},
+				default: 0,
+				required: true,
+				description: 'Number of occurrences to remove. 0 = all, positive = from head, negative = from tail',
+			},
+			{
+				displayName: 'Value',
+				name: 'value',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['lrem'],
+					},
+				},
+				default: '',
+				required: true,
+				description: 'Value to remove from the list',
+			},
+
+			// ----------------------------------
 			//         set operations
 			// ----------------------------------
 			{
@@ -1328,7 +1475,7 @@ export class RedisEnhanced implements INodeType {
 			[
 				'delete', 'get', 'keys', 'set', 'incr', 'publish', 'push', 'pop',
 				'exists', 'mget', 'mxget', 'mset', 'mxset', 'scan', 'ttl', 'persist', 'expireat',
-				'getset', 'append', 'strlen', 'blpop', 'brpop', 'llen', 'lrange',
+				'getset', 'append', 'strlen', 'blpop', 'brpop', 'llen', 'lrange', 'lset', 'ltrim', 'lrem',
 				'sadd', 'srem', 'sismember', 'scard',
 				'zadd', 'zrange', 'zrem', 'zcard',
 				'hlen', 'hkeys', 'hvals', 'hexists', 'hget', 'hset', 'hmget', 'eval'
@@ -1652,6 +1799,24 @@ export class RedisEnhanced implements INodeType {
 						const stop = this.getNodeParameter('stop', itemIndex) as number;
 						const elements = await client.lRange(list, start, stop);
 						returnItems.push({ json: { list, start, stop, elements } });
+					} else if (operation === 'lset') {
+						const list = this.getNodeParameter('list', itemIndex) as string;
+						const index = this.getNodeParameter('index', itemIndex) as number;
+						const value = this.getNodeParameter('value', itemIndex) as string;
+						await client.lSet(list, index, value);
+						returnItems.push({ json: { list, index, value } });
+					} else if (operation === 'ltrim') {
+						const list = this.getNodeParameter('list', itemIndex) as string;
+						const start = this.getNodeParameter('start', itemIndex) as number;
+						const stop = this.getNodeParameter('stop', itemIndex) as number;
+						await client.lTrim(list, start, stop);
+						returnItems.push({ json: { list, start, stop, trimmed: true } });
+					} else if (operation === 'lrem') {
+						const list = this.getNodeParameter('list', itemIndex) as string;
+						const count = this.getNodeParameter('count', itemIndex) as number;
+						const value = this.getNodeParameter('value', itemIndex) as string;
+						const removed = await client.lRem(list, count, value);
+						returnItems.push({ json: { list, count, value, removed } });
 					} else if (operation === 'sadd') {
 						const set = this.getNodeParameter('set', itemIndex) as string;
 						const members = this.getNodeParameter('members', itemIndex) as string;
